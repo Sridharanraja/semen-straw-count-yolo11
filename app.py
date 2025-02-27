@@ -8,7 +8,7 @@ from PIL import Image
 st.set_page_config(page_title="Semen Straw Counting", page_icon="🔍")
 
 def load_model():
-    model = YOLO("yolo11_best_300.pt")
+    model = YOLO("./weight_file/yolo11_best_300.pt")
     return model
 
 def detect_objects(model, image, conf_thresh):
