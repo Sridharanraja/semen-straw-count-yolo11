@@ -5,7 +5,7 @@ import numpy as np
 from ultralytics import YOLO
 from PIL import Image
 
-st.set_page_config(page_title="Semen Straw Counting", page_icon="🐮")
+st.set_page_config(page_title="Semen Straw Counting", page_icon="🔍")
 
 # Automatically select GPU if available; otherwise, use CPU
 device = "cuda" if torch.cuda.is_available() else "cpu"
