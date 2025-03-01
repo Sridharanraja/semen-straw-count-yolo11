@@ -7,18 +7,16 @@ from PIL import Image
 
 st.set_page_config(page_title="Semen Straw Counting", page_icon="🐮")
 
-# Automatically select GPU if available; otherwise, use CPU
-device = "cuda" if torch.cuda.is_available() else "cpu"
 
 @st.cache_resource()
 def load_models():
-    roi_model = YOLO("./weight_file/roi_best_100.pt").to(device)  # ROI Model
-    straw_model = YOLO("./weight_file/yolo11_best_300.pt").to(device)  # Combined Model
+    roi_model = YOLO("./weight_file/roi_best_100.pt") # ROI Model
+    straw_model = YOLO("./weight_file/yolo11_best_300.pt")  # Combined Model
     return roi_model, straw_model
 
 def detect_roi(roi_model, image, conf_thresh=0.5):
     """ Detects the Region of Interest (ROI) and returns the largest bounding box """
-    results = roi_model.predict(image, conf=conf_thresh, device=device)
+    results = roi_model.predict(image, conf=conf_thresh)
 
     if not results or len(results[0].boxes) == 0:
         return None  # No ROI detected
@@ -48,7 +46,7 @@ def detect_straws(straw_model, image, roi_box, conf_thresh,max_det=2500):
     cv2.rectangle(mask, (x1, y1), (x2, y2), 255, thickness=-1)
 
     # Detect objects using the combined model
-    results = straw_model.predict(image, conf=conf_thresh, device=device,max_det=max_det)
+    results = straw_model.predict(image, conf=conf_thresh, max_det=max_det)
 
     if not results or len(results[0].boxes) == 0:
         return image, 0
