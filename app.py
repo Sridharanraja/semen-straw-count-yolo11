@@ -4,6 +4,7 @@ import torch
 import numpy as np
 from ultralytics import YOLO
 from PIL import Image
+import torch,torchvision
 
 st.set_page_config(page_title="Semen Straw Counting", page_icon="🔍")
 
@@ -12,72 +13,73 @@ def load_model():
     model = YOLO("./weight_file/yolo11_best_300.pt")
     return model
 
-# Function to check if a straw is inside an ROI
-def is_inside_roi(straw_box, roi_boxes):
-    x1_s, y1_s, x2_s, y2_s = straw_box  # Straw bounding box
-    
-    for roi_box in roi_boxes:
-        x1_r, y1_r, x2_r, y2_r = roi_box  # ROI bounding box
-        
-        # Check if straw is completely inside the ROI
-        if x1_r <= x1_s and y1_r <= y1_s and x2_r >= x2_s and y2_r >= y2_s:
-            return True
-    return False
+def detect_objects(model, image, conf_thresh, iou_thresh=0.3, edge_margin_ratio=0.03, min_box_size=15,max_roi_ratio=0.85,max_det=2500):
+    results = model.predict(image, conf=conf_thresh,max_det=max_det)
 
-# Object detection function with max_det applied per class
-def detect_objects(model, image, straw_conf, roi_conf=0.7, iou=0.7):
-    # Detect ROI first (max_det=1)
-    roi_results = model.predict(image, iou=iou, conf=roi_conf, max_det=1)  
+    if not results or len(results[0].boxes) == 0:
+        return np.array(image), 0
 
-    # Detect straws (max_det=2500)
-    straw_results = model.predict(image, iou=iou, conf=straw_conf, max_det=2500)
+    img = np.array(image)
+    img_h, img_w = img.shape[:2]
+    edge_margin = int(img_w * edge_margin_ratio)
 
-    img = np.array(image)  
-    roi_boxes = []  # List to store ROI bounding boxes
-    straw_count = 0  
+    boxes = results[0].boxes
+    filtered_boxes = []
+    straw_count = 0
 
-    # Collect ROI bounding boxes
-    for box in roi_results[0].boxes:
-        roi_boxes.append(list(map(int, box.xyxy[0].tolist())))
-        
+    for box in boxes:
+        conf = box.conf[0].item()
+        cls = int(box.cls[0].item())
+        x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
 
-    # Now, check for straw detections inside the ROI
-    for box in straw_results[0].boxes:
-        straw_box = list(map(int, box.xyxy[0].tolist()))
-        if is_inside_roi(straw_box, roi_boxes):  # Only count if inside ROI
+        # Box width and height
+        box_w, box_h = x2 - x1, y2 - y1
+
+        # **Skip large bounding box (ROI)**
+        if box_w > img_w * max_roi_ratio or box_h > img_h * max_roi_ratio:
+            continue  
+
+        # **Apply edge filter only on left/right (not top/bottom)**
+        if (x1 < edge_margin or x2 > img_w - edge_margin):
+            continue  
+
+        # **Keep small straw detections**
+        if box_w < min_box_size or box_h < min_box_size:
+            continue  
+
+        filtered_boxes.append([x1, y1, x2, y2, conf])
+
+    # **Apply NMS (higher IoU to avoid losing too many)**
+    if filtered_boxes:
+        filtered_boxes = torch.tensor(filtered_boxes)
+        keep = torchvision.ops.nms(filtered_boxes[:, :4], filtered_boxes[:, 4], iou_thresh)
+        filtered_boxes = filtered_boxes[keep]
+
+        # **Draw final bounding boxes**
+        for box in filtered_boxes:
+            x1, y1, x2, y2 = map(int, box[:4])
+            cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
             straw_count += 1
-            x1, y1, x2, y2 = straw_box
-            cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)  # Draw bounding box
 
     return img, straw_count
 
-# Streamlit app layout
 def main():
-    st.title("Semen Straw Detection and Count")
-
+    st.title("Semen Straw Counting")
+    
     model = load_model()
-
-    # Only allow adjusting the Straw confidence threshold
-    straw_conf = st.slider("Straw Confidence Threshold", 0.1, 1.0, 0.25)
-
-    # Image upload
+    
+    conf_thresh = st.slider("Confidence Threshold", 0.1, 1.0, 0.25)
+    
     uploaded_file = st.file_uploader("Upload an Image", type=["jpg", "png", "jpeg"])
-
+    
     if uploaded_file:
         image = Image.open(uploaded_file)
+        st.image(image, caption="Uploaded Image", use_column_width=True)
         
-        # Display uploaded image
-        st.write("### Uploaded Image:")
-        st.image(image, caption="Original Image", use_column_width=True)
-
         if st.button("Process Image"):
-            processed_img, straw_count = detect_objects(model, image, straw_conf)
-
-            
-            st.image(processed_img, caption="Predicted Image")
-
-            # Show total straw count inside ROI
+            processed_img, straw_count = detect_objects(model, image, conf_thresh,max_det=2500)
+            st.image(processed_img, caption="Predicted Image", use_column_width=True)
             st.write(f"### Total Straw Count: {straw_count}")
-
+        
 if __name__ == "__main__":
     main()
