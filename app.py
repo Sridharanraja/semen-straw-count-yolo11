@@ -75,7 +75,7 @@ def main():
         image = Image.open(uploaded_file).convert("RGB")
         image_np = np.array(image)
 
-        st.image(image, caption="Uploaded Image", use_column_width=True)
+        st.image(image, caption="Uploaded Image", use_container_width=True)
 
         if st.button("Process Image"):
             # Step 1: Detect ROI using the ROI model
@@ -85,7 +85,7 @@ def main():
             processed_img, straw_count = detect_straws(straw_model, image_np, roi_box, straw_conf_thresh,max_det=2500)
 
             # Step 3: Display the results
-            st.image(processed_img, caption="Detected Straws", use_column_width=True)
+            st.image(processed_img, caption="Detected Straws", use_container_width=True)
             st.write(f"### Total Straw Count: {straw_count}")
 
 if __name__ == "__main__":
