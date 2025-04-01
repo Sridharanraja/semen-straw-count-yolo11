@@ -11,7 +11,9 @@ st.set_page_config(page_title="Semen Straw Counting", page_icon="🐮")
 def load_models():
 
     roi_model = YOLO("./weight_file/best_roi_200.pt") # ROI Model
-    straw_model = YOLO("./weight_file/best_roi_straw_400.pt")  # Combined Model
+    straw_model = YOLO("./new_weight_file/best_roi_straw_600.pt")  # Combined Model
+    
+    # straw_model = YOLO("./weight_file/best_roi_straw_400.pt")  # Combined Model
     
     # roi_model = YOLO("./weight_file/roi_best_100.pt") # ROI Model
     # straw_model = YOLO("./weight_file/yolo11_best_300.pt")  # Combined Model
