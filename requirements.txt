@@ -1,6 +1,7 @@
-streamlit
-opencv-python-headless
-ultralytics
-torch
-pandas==2.2.2
 numpy==1.26.4
+Pillow
+opencv-python-headless==4.8.1.78
+ultralytics
+torch==2.1.0
+torchvision==0.16.0
+streamlit
